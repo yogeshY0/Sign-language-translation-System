@@ -5,20 +5,7 @@
 **Kantipur Engineering College — CT 755 Major Project**  
 Bachelor of Computer Engineering, 2026
 
----
 
-## Team
-
-| Name | Roll No |
-|------|---------|
-| Samud Govind Rajkarnikar | KAN078BCT075 |
-| Saroj Tamang Yonjan | KAN078BCT078 |
-| Ujjwal Luitel | KAN078BCT092 |
-| Yogesh Baral | KAN078BCT095 |
-
-**Supervisor:** Er. Binod Maharjan, Senior Lecturer
-
----
 
 ## Demo
 
