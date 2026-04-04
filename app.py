@@ -1,5 +1,6 @@
 from flask import Flask, Response, jsonify, render_template, request, make_response
-import cv2import mediapipe as mp
+import cv2
+import mediapipe as mp
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
