@@ -1,8 +1,8 @@
 from flask import Flask, Response, jsonify, render_template, request, make_response
-import cv2
-from mediapipe.python.solutions import hands as mp_hands
-from mediapipe.python.solutions import drawing_utils as mp_drawing
-from mediapipe.python.solutions import drawing_styles as mp_drawing_styles
+import cv2import mediapipe as mp
+mp_hands = mp.solutions.hands
+mp_drawing = mp.solutions.drawing_utils
+mp_drawing_styles = mp.solutions.drawing_styles
 import numpy as np
 import pickle
 from tensorflow import keras
@@ -106,8 +106,8 @@ class WebHybridTranslator:
             raise Exception("No models loaded! Check Model/ directory.")
 
         # MediaPipe
-        self.mp_hands = mp_hands
-        self.hands    = mp_hands.Hands(
+        self.mp_hands = mp.solutions.hands
+        self.hands    = mp.solutions.hands.Hands(
             static_image_mode=False,
             max_num_hands=1,
             min_detection_confidence=0.5,
