@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SignTranslator — Real-time ASL Recognition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #0d0d0f;
+      --surface:   #16161a;
+      --border:    #2a2a32;
+      --accent-l:  #5be4ff;
+      --accent-w:  #4dffb0;
+      --accent-a:  #ff6b6b;
+      --text-1:    #f0f0f5;
+      --text-2:    #8888a0;
+      --text-3:    #444458;
+      --radius:    12px;
+      --mono:      'Space Mono', monospace;
+      --sans:      'DM Sans', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text-1);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100vh;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0 16px; border-bottom: 1px solid var(--border);
+    }
+    .logo { font-family: var(--mono); font-size: 18px; letter-spacing: -0.5px; }
+    .logo span { color: var(--accent-l); }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .header-badge {
+      font-size: 11px; color: var(--text-2); font-family: var(--mono);
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 4px 10px; border-radius: 20px; letter-spacing: 0.5px;
+    }
+    .btn-download {
+      font-size: 11px; font-family: var(--mono); font-weight: 700;
+      background: rgba(77,255,176,0.1); border: 1px solid rgba(77,255,176,0.3);
+      color: var(--accent-w); padding: 5px 14px; border-radius: 20px;
+      cursor: pointer; transition: all 0.2s; text-decoration: none;
+      letter-spacing: 0.5px;
+    }
+    .btn-download:hover { background: rgba(77,255,176,0.2); }
+
+    /* ── Main grid ── */
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 20px; padding: 20px 0; align-items: start;
+    }
+    @media (max-width: 900px) { .content { grid-template-columns: 1fr; } }
+
+    .left-col { display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Video ── */
+    .video-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; position: relative;
+    }
+    .video-panel img { width: 100%; height: auto; display: block; }
+    .video-overlay { position: absolute; top: 14px; left: 14px; display: flex; gap: 8px; }
+    .fps-badge {
+      font-family: var(--mono); font-size: 11px;
+      background: rgba(0,0,0,0.6); border: 1px solid var(--border);
+      color: var(--text-2); padding: 3px 8px; border-radius: 6px;
+    }
+
+    /* ── Sentence panel ── */
+    .sentence-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+    }
+    .panel-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px;
+    }
+    .panel-label {
+      font-size: 10px; font-family: var(--mono);
+      text-transform: uppercase; letter-spacing: 1px; color: var(--text-3);
+    }
+    .panel-actions { display: flex; gap: 8px; }
+
+    .sentence-text {
+      font-family: var(--mono); font-size: 22px; font-weight: 700;
+      color: var(--text-1); min-height: 36px; letter-spacing: 1px;
+      word-break: break-all; line-height: 1.4;
+    }
+    .finalized-word { color: var(--accent-w); }
+    .current-word   { color: var(--accent-l); opacity: 0.7; }
+    .sentence-empty { color: var(--text-3); font-size: 14px; }
+
+    .last-spoken-row {
+      margin-top: 10px; font-size: 11px;
+      color: var(--text-3); font-family: var(--mono);
+    }
+    .last-spoken-row span { color: var(--text-2); }
+
+    /* ── Session log panel ── */
+    .log-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+    }
+
+    .log-count-badge {
+      font-family: var(--mono); font-size: 10px;
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text-2); padding: 2px 8px; border-radius: 10px;
+    }
+
+    .log-table {
+      width: 100%; border-collapse: collapse; margin-top: 10px;
+      font-size: 12px; font-family: var(--mono);
+    }
+    .log-table th {
+      text-align: left; color: var(--text-3); font-weight: 400;
+      padding: 4px 8px; border-bottom: 1px solid var(--border);
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .log-table td {
+      padding: 6px 8px; border-bottom: 1px solid rgba(42,42,50,0.5);
+      color: var(--text-2);
+    }
+    .log-table tr:last-child td { border-bottom: none; }
+    .log-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .log-text-word   { color: var(--accent-w); font-weight: 700; }
+    .log-text-letter { color: var(--accent-l); font-weight: 700; }
+
+    .conf-high { color: var(--accent-w); }
+    .conf-med  { color: #ffd166; }
+    .conf-low  { color: var(--accent-a); }
+
+    .log-empty {
+      text-align: center; color: var(--text-3);
+      font-size: 12px; font-family: var(--mono);
+      padding: 20px 0;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar { display: flex; flex-direction: column; gap: 12px; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px;
+    }
+    .card-label {
+      font-size: 10px; font-family: var(--mono); text-transform: uppercase;
+      letter-spacing: 1px; color: var(--text-3); margin-bottom: 10px;
+    }
+
+    .mode-row { display: flex; align-items: center; gap: 10px; }
+    .mode-pill {
+      font-family: var(--mono); font-size: 13px; font-weight: 700;
+      padding: 6px 16px; border-radius: 20px; letter-spacing: 1px;
+      transition: all 0.3s ease;
+    }
+    .mode-pill.letter {
+      background: rgba(91,228,255,0.15); color: var(--accent-l);
+      border: 1px solid rgba(91,228,255,0.3);
+    }
+    .mode-pill.word {
+      background: rgba(77,255,176,0.15); color: var(--accent-w);
+      border: 1px solid rgba(77,255,176,0.3);
+    }
+
+    .detection-value {
+      font-family: var(--mono); font-size: 42px; font-weight: 700;
+      line-height: 1; margin-bottom: 6px; letter-spacing: -1px;
+      min-height: 50px; transition: color 0.2s;
+    }
+    .detection-value.letter-type { color: var(--accent-l); }
+    .detection-value.word-type   { color: var(--accent-w); }
+    .detection-value.empty       { color: var(--text-3); }
+
+    .confidence-row { display: flex; align-items: center; gap: 10px; }
+    .confidence-bar-wrap {
+      flex: 1; height: 4px; background: var(--border);
+      border-radius: 2px; overflow: hidden;
+    }
+    .confidence-bar {
+      height: 100%; border-radius: 2px;
+      transition: width 0.3s ease, background 0.3s; width: 0%;
+    }
+    .confidence-pct {
+      font-family: var(--mono); font-size: 12px;
+      color: var(--text-2); min-width: 36px; text-align: right;
+    }
+
+    .model-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .model-row:last-child { border-bottom: none; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dot.ok   { background: var(--accent-w); }
+    .dot.fail { background: var(--accent-a); }
+    .model-name { color: var(--text-1); font-size: 13px; }
+    .model-tag  { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+
+    .buffer-label-row {
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: var(--text-2); margin-bottom: 6px;
+    }
+    .buffer-label-row span:last-child { font-family: var(--mono); }
+    .buffer-bar-wrap { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .buffer-bar {
+      height: 100%; border-radius: 3px; background: var(--accent-w);
+      transition: width 0.2s ease; width: 0%;
+    }
+
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .btn {
+      padding: 11px 16px; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; font-family: var(--sans);
+      cursor: pointer; transition: all 0.2s ease;
+    }
+    .btn-mode {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text-1);
+    }
+    .btn-mode:hover { border-color: var(--accent-l); color: var(--accent-l); }
+    .btn-clear {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text-2);
+    }
+    .btn-clear:hover { border-color: var(--accent-a); color: var(--accent-a); }
+    .btn-speak {
+      background: rgba(77,255,176,0.1); border: 1px solid rgba(77,255,176,0.3);
+      color: var(--accent-w);
+    }
+    .btn-speak:hover { background: rgba(77,255,176,0.2); }
+    .btn-back {
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text-2); font-family: var(--mono);
+    }
+    .btn-back:hover { border-color: #ffd166; color: #ffd166; }
+    .btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 6px; font-family: var(--mono); }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border); padding: 14px 0;
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--text-3); font-family: var(--mono);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <header>
+      <div class="logo">SIGN<span>TRANSLATOR</span></div>
+      <div class="header-right">
+        <div class="header-badge">⬤ LIVE &nbsp;|&nbsp; ASL RECOGNITION</div>
+        <a class="btn-download" href="/download_log" download>⬇ Download Log</a>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <div class="left-col">
+
+        <!-- Video -->
+        <div class="video-panel">
+          <img src="/video_feed" alt="Live camera feed" />
+          <div class="video-overlay">
+            <div class="fps-badge" id="fpsBadge">-- fps</div>
+          </div>
+        </div>
+
+        <!-- Sentence panel -->
+        <div class="sentence-panel">
+          <div class="panel-header">
+            <div class="panel-label">Sentence Builder</div>
+            <div class="panel-actions">
+              <button class="btn btn-back btn-sm" onclick="backspace()">⌫ Back</button>
+              <button class="btn btn-speak btn-sm" onclick="speakSentence()">▶ Speak</button>
+              <button class="btn btn-clear btn-sm" onclick="clearDetection()">✕ Clear</button>
+            </div>
+          </div>
+          <div id="sentenceDisplay" class="sentence-text">
+            <span class="sentence-empty">Start signing to build a sentence...</span>
+          </div>
+          <div class="last-spoken-row">
+            Last spoken: <span id="lastSpoken">—</span>
+          </div>
+        </div>
+
+        <!-- Session log panel -->
+        <div class="log-panel">
+          <div class="panel-header">
+            <div class="panel-label">Session History</div>
+            <div class="panel-actions">
+              <span class="log-count-badge" id="logCount">0 detections</span>
+              <a class="btn-download btn-sm" href="/download_log" download>⬇ Export</a>
+            </div>
+          </div>
+
+          <table class="log-table" id="logTable">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Type</th>
+                <th>Conf</th>
+                <th>Detection</th>
+              </tr>
+            </thead>
+            <tbody id="logBody">
+              <tr>
+                <td colspan="4" class="log-empty">No detections yet...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+
+        <div class="card">
+          <div class="card-label">Recognition Mode</div>
+          <div class="mode-row">
+            <div class="mode-pill letter" id="modePill">LETTER</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">Current Detection</div>
+          <div class="detection-value empty" id="detectionValue">—</div>
+          <div class="confidence-row">
+            <div class="confidence-bar-wrap">
+              <div class="confidence-bar" id="confBar"></div>
+            </div>
+            <div class="confidence-pct" id="confPct">0%</div>
+          </div>
+        </div>
+
+        <div class="card" id="bufferCard">
+          <div class="card-label">Sequence Buffer</div>
+          <div class="buffer-label-row">
+            <span>Frame accumulation</span>
+            <span id="bufferText">0 / 60</span>
+          </div>
+          <div class="buffer-bar-wrap">
+            <div class="buffer-bar" id="bufferBar"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">Model Status</div>
+          <div class="model-row">
+            <div class="dot" id="wordDot"></div>
+            <span class="model-name">Word Model</span>
+            <span class="model-tag" id="wordTag">—</span>
+          </div>
+          <div class="model-row">
+            <div class="dot" id="letterDot"></div>
+            <span class="model-name">Letter Model</span>
+            <span class="model-tag" id="letterTag">—</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">Controls</div>
+          <div class="btn-row">
+            <button class="btn btn-mode" onclick="toggleMode()">Switch Mode</button>
+            <button class="btn btn-clear" onclick="clearDetection()">Clear All</button>
+          </div>
+        </div>
+
+      </aside>
+    </main>
+
+    <footer>
+      <span>KEC — CT 755 Major Project</span>
+      <span id="footerMode">Mode: LETTER</span>
+    </footer>
+
+  </div>
+
+  <script>
+    function updateState() {
+      fetch('/get_state')
+        .then(r => r.json())
+        .then(data => {
+          const isWord  = data.mode === 'WORD';
+          const dtype   = data.detection_type || '';
+          const det     = data.detection || '';
+          const conf    = data.confidence || 0;
+          const confPct = Math.round(conf * 100);
+          const fill    = data.buffer_fill || 0;
+
+          // Mode
+          const pill = document.getElementById('modePill');
+          pill.textContent = data.mode;
+          pill.className   = 'mode-pill ' + (isWord ? 'word' : 'letter');
+
+          // Detection
+          const detEl = document.getElementById('detectionValue');
+          if (det) {
+            detEl.textContent = det;
+            detEl.className   = 'detection-value ' + (dtype === 'WORD' ? 'word-type' : 'letter-type');
+          } else {
+            detEl.textContent = '—';
+            detEl.className   = 'detection-value empty';
+          }
+
+          // Confidence
+          const barEl = document.getElementById('confBar');
+          barEl.style.width      = confPct + '%';
+          barEl.style.background = conf > 0.7 ? 'var(--accent-w)'
+                                 : conf > 0.5 ? '#ffd166'
+                                 : 'var(--accent-a)';
+          document.getElementById('confPct').textContent = confPct + '%';
+
+          // Buffer
+          const bufPct = Math.min((fill / 60) * 100, 100);
+          document.getElementById('bufferBar').style.width  = bufPct + '%';
+          document.getElementById('bufferText').textContent = fill + ' / 60';
+          document.getElementById('bufferCard').style.opacity = isWord ? '1' : '0.4';
+
+          // Models
+          const wl = data.word_model_loaded;
+          const ll = data.letter_model_loaded;
+          document.getElementById('wordDot').className   = 'dot ' + (wl ? 'ok' : 'fail');
+          document.getElementById('letterDot').className = 'dot ' + (ll ? 'ok' : 'fail');
+          document.getElementById('wordTag').textContent   = wl ? 'loaded' : 'missing';
+          document.getElementById('letterTag').textContent = ll ? 'loaded' : 'missing';
+
+          // FPS + footer
+          document.getElementById('fpsBadge').textContent = (data.fps || 0) + ' fps';
+          document.getElementById('footerMode').textContent = 'Mode: ' + data.mode;
+
+          // Last spoken
+          document.getElementById('lastSpoken').textContent =
+            data.last_spoken ? data.last_spoken.toUpperCase() : '—';
+
+          // Sentence
+          const sentEl   = document.getElementById('sentenceDisplay');
+          const words    = data.sentence_words || [];
+          const currWord = data.current_word || '';
+          if (words.length === 0 && !currWord) {
+            sentEl.innerHTML = '<span class="sentence-empty">Start signing to build a sentence...</span>';
+          } else {
+            let html = '';
+            words.forEach(w => { html += `<span class="finalized-word">${w}</span> `; });
+            if (currWord) html += `<span class="current-word">${currWord}...</span>`;
+            sentEl.innerHTML = html;
+          }
+
+          // ── Session log table ───────────────────────────────────────────────
+          const logCount = data.log_count || 0;
+          document.getElementById('logCount').textContent =
+            logCount + ' detection' + (logCount !== 1 ? 's' : '');
+
+          const recentLog = data.recent_log || [];
+          const tbody     = document.getElementById('logBody');
+
+          if (recentLog.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="log-empty">No detections yet...</td></tr>';
+          } else {
+            // Show most recent first
+            const reversed = [...recentLog].reverse();
+            tbody.innerHTML = reversed.map(entry => {
+              const textClass = entry.type === 'WORD' ? 'log-text-word' : 'log-text-letter';
+              const conf      = entry.confidence;
+              const confClass = conf >= 80 ? 'conf-high' : conf >= 60 ? 'conf-med' : 'conf-low';
+              const confStr   = conf ? `<span class="${confClass}">${conf}%</span>` : '—';
+              return `
+                <tr>
+                  <td>${entry.time}</td>
+                  <td>${entry.type}</td>
+                  <td>${confStr}</td>
+                  <td class="${textClass}">${entry.text}</td>
+                </tr>`;
+            }).join('');
+          }
+        })
+        .catch(() => {});
+    }
+
+    function toggleMode() {
+      fetch('/toggle_mode', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (d.success) updateState(); });
+    }
+
+    function clearDetection() {
+      fetch('/clear_sentence', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (d.success) updateState(); });
+    }
+
+    function speakSentence() {
+      fetch('/speak_sentence', { method: 'POST' }).then(r => r.json());
+    }
+
+    function backspace() {
+      fetch('/backspace', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (d.success) updateState(); });
+    }
+
+    window.addEventListener('beforeunload', () => {
+      fetch('/cleanup', { method: 'POST', keepalive: true });
+    });
+
+    setInterval(updateState, 500);
+    updateState();
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+flask==3.0.0
+opencv-python-headless==4.9.0.80
+mediapipe==0.10.14
+numpy==1.26.4
+tensorflow-cpu==2.15.0
+pickle5==0.0.12
+gunicorn==21.2.0
