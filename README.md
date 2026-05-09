@@ -28,7 +28,10 @@ Bachelor of Computer Engineering, Tribhuvan University — March 2026
 | CAT | EAT | FATHER | LATER |
  
 ---
- 
+ ## Demo
+ -linke (https://www.veed.io/view/62f0c6f6-50ee-4eb1-a5d4-a0e0a34e67f1?source=Dashboard&panel=share)
+
+ ___
 ## Model Performance
  
 | Model | Architecture | Input Shape | Training Accuracy | Test Accuracy | F1-Score | Inference Time |
